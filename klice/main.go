@@ -25,16 +25,19 @@ type gotoS struct {
 
 var ctx context.Context = context.Background()
 
-func getTask(req *http.Request) (task string) {
+func getTask(req *http.Request, rdb *redis.Client) (task string) {
 	task = req.URL.Path
 	if task[0] == '/' {
 		task = task[1:]
 	}
+	team, _ := req.Cookie("team")
+	tier, _ := rdb.Get(ctx, team.Value+":tier").Result()
+	task, _ = rdb.Get(ctx, task+":"+tier).Result()
 	return
 }
 
 func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
-	task := getTask(req)
+	task := getTask(req, rdb)
 	numberS, _ := rdb.Get(ctx, task+":number").Result()
 	number, _ := strconv.Atoi(numberS)
 	cipher, _ := rdb.Get(ctx, task+":cipher").Result()
@@ -46,7 +49,7 @@ func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.
 }
 
 func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
-	task := getTask(req)
+	task := getTask(req, rdb)
 	numberS, _ := rdb.Get(ctx, task+":number").Result()
 	number, _ := strconv.Atoi(numberS)
 	position, _ := rdb.Get(ctx, task+":position").Result()
@@ -106,7 +109,7 @@ func main() {
 			http.Redirect(writer, req, "/signin", 302)
 		} else {
 			req.ParseForm()
-			task := getTask(req)
+			task := getTask(req, rdb)
 			solOk, _ := rdb.Get(ctx, task+":solution").Result()
 			sol := req.FormValue("solution")
 			sol = strings.ToUpper(sol)
