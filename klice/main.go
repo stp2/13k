@@ -104,16 +104,17 @@ func main() {
 			}
 			http.SetCookie(writer, &cookie)
 			http.Redirect(writer, req, "/signin", 302)
-		}
-		req.ParseForm()
-		task := getTask(req)
-		solOk, _ := rdb.Get(ctx, task+":solution").Result()
-		sol := req.FormValue("solution")
-		sol = strings.ToUpper(sol)
-		if sol == solOk {
-			handleMlok(writer, req, tmplM, rdb)
 		} else {
-			handleCipher(writer, req, tmplQ, rdb)
+			req.ParseForm()
+			task := getTask(req)
+			solOk, _ := rdb.Get(ctx, task+":solution").Result()
+			sol := req.FormValue("solution")
+			sol = strings.ToUpper(sol)
+			if sol == solOk {
+				handleMlok(writer, req, tmplM, rdb)
+			} else {
+				handleCipher(writer, req, tmplQ, rdb)
+			}
 		}
 	})
 	http.HandleFunc("/signin", func(writer http.ResponseWriter, req *http.Request) {
