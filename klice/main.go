@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -56,6 +58,30 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	tmpl.Execute(writer, mlok)
 }
 
+func handleSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) {
+	req.ParseForm()
+	pass := req.FormValue("passphrase")
+	_, err := rdb.Get(ctx, pass+":name").Result()
+	if err == redis.Nil {
+		body, _ := ioutil.ReadFile("signIn.html")
+		fmt.Fprint(writer, string(body))
+	} else {
+		cookie := http.Cookie{
+			Name:   "team",
+			Value:  pass,
+			Path:   "/",
+			MaxAge: 36000,
+		}
+		task, err := req.Cookie("task")
+		if err == nil {
+			task.MaxAge = -1
+			http.SetCookie(writer, task)
+		}
+		http.SetCookie(writer, &cookie)
+		http.Redirect(writer, req, task.Value, 302)
+	}
+}
+
 func main() {
 	tmplQ := template.Must(template.ParseFiles("cipher.html"))
 	tmplM := template.Must(template.ParseFiles("done.html"))
@@ -68,6 +94,17 @@ func main() {
 	})
 
 	http.HandleFunc("/", func(writer http.ResponseWriter, req *http.Request) {
+		_, err := req.Cookie("team")
+		if err != nil {
+			cookie := http.Cookie{
+				Name:   "task",
+				Value:  req.URL.Path,
+				Path:   "/",
+				MaxAge: 3600,
+			}
+			http.SetCookie(writer, &cookie)
+			http.Redirect(writer, req, "/signin", 302)
+		}
 		req.ParseForm()
 		task := getTask(req)
 		solOk, _ := rdb.Get(ctx, task+":solution").Result()
@@ -78,6 +115,9 @@ func main() {
 		} else {
 			handleCipher(writer, req, tmplQ, rdb)
 		}
+	})
+	http.HandleFunc("/signin", func(writer http.ResponseWriter, req *http.Request) {
+		handleSignIn(writer, req, rdb)
 	})
 	http.ListenAndServe("127.0.0.6:8080", nil)
 }
