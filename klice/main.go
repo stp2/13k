@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -24,31 +23,41 @@ type gotoS struct {
 
 var ctx context.Context = context.Background()
 
-func handle(writer http.ResponseWriter, req *http.Request, tmplQ *template.Template, tmplM *template.Template, rdb *redis.Client) {
-	req.ParseForm()
-	task := req.FormValue("c")
+func getTask(req *http.Request) (task string) {
+	task = req.URL.Path
+	if task[0] == '/' {
+		task = task[1:]
+	}
+	return
+}
+
+func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
+	task := getTask(req)
 	numberS, _ := rdb.Get(ctx, task+":number").Result()
 	number, _ := strconv.Atoi(numberS)
-	sol := req.FormValue("solution")
-	sol = strings.ToUpper(sol)
-	fmt.Println([]byte(sol))
-	if sol == "AHOJ" {
-		mlok := gotoS{
-			number,
-			"50.8439058N, 14.2274044E",
-			"Za márnicí."}
-		tmplM.Execute(writer, mlok)
-	} else {
-		q := questionS{
-			number,
-			"BIPK",
-		}
-		tmplQ.Execute(writer, q)
+	cipher, _ := rdb.Get(ctx, task+":cipher").Result()
+	q := questionS{
+		number,
+		template.HTML(cipher),
 	}
+	tmpl.Execute(writer, q)
+}
+
+func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
+	task := getTask(req)
+	numberS, _ := rdb.Get(ctx, task+":number").Result()
+	number, _ := strconv.Atoi(numberS)
+	position, _ := rdb.Get(ctx, task+":position").Result()
+	help, _ := rdb.Get(ctx, task+":help").Result()
+	mlok := gotoS{
+		number,
+		template.HTML(position),
+		template.HTML(help)}
+	tmpl.Execute(writer, mlok)
 }
 
 func main() {
-	tmplQ := template.Must(template.ParseFiles("sifra.html"))
+	tmplQ := template.Must(template.ParseFiles("cipher.html"))
 	tmplM := template.Must(template.ParseFiles("done.html"))
 
 	// Redis
@@ -59,7 +68,16 @@ func main() {
 	})
 
 	http.HandleFunc("/", func(writer http.ResponseWriter, req *http.Request) {
-		handle(writer, req, tmplQ, tmplM, rdb)
+		req.ParseForm()
+		task := getTask(req)
+		solOk, _ := rdb.Get(ctx, task+":solution").Result()
+		sol := req.FormValue("solution")
+		sol = strings.ToUpper(sol)
+		if sol == solOk {
+			handleMlok(writer, req, tmplM, rdb)
+		} else {
+			handleCipher(writer, req, tmplQ, rdb)
+		}
 	})
 	http.ListenAndServe("127.0.0.6:8080", nil)
 }
