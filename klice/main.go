@@ -106,6 +106,23 @@ func solved(req *http.Request, rdb *redis.Client) bool {
 	}
 }
 
+func isSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) bool {
+	_, err := req.Cookie("team")
+	if err != nil { // need login
+		cookie := http.Cookie{ // qr url
+			Name:   "qr",
+			Value:  req.URL.Path,
+			Path:   "/",
+			MaxAge: 3600,
+		}
+		http.SetCookie(writer, &cookie)
+		http.Redirect(writer, req, "/signin", 302)
+		return false
+	} else {
+		return true
+	}
+}
+
 func main() {
 	tmplQ := template.Must(template.ParseFiles("cipher.html"))
 	tmplM := template.Must(template.ParseFiles("done.html"))
@@ -118,17 +135,7 @@ func main() {
 	})
 
 	http.HandleFunc("/qr/", func(writer http.ResponseWriter, req *http.Request) {
-		_, err := req.Cookie("team")
-		if err != nil { // need login
-			cookie := http.Cookie{ // qr url
-				Name:   "qr",
-				Value:  req.URL.Path,
-				Path:   "/",
-				MaxAge: 3600,
-			}
-			http.SetCookie(writer, &cookie)
-			http.Redirect(writer, req, "/signin", 302)
-		} else { // display task
+		if isSignIn(writer, req, rdb) {
 			req.ParseForm()
 			task := getTask(req, rdb)
 			solOk, _ := rdb.Get(ctx, task+"/solution").Result()
