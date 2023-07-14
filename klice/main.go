@@ -25,6 +25,7 @@ type gotoS struct {
 
 type teamS struct {
 	Name string
+	Tier string
 	Last int
 }
 
@@ -131,10 +132,12 @@ func isSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) 
 func handleTeam(writer http.ResponseWriter, req *http.Request, template template.Template, rdb *redis.Client) {
 	team, _ := req.Cookie("team")
 	name, _ := rdb.Get(ctx, "team/"+team.Value+"/name").Result()
+	tier, _ := rdb.Get(ctx, "team/"+team.Value+"/tier").Result()
 	lastS, _ := rdb.Get(ctx, "team/"+team.Value+"/last").Result()
 	last, _ := strconv.Atoi(lastS)
 	info := teamS{
 		name,
+		tier,
 		last,
 	}
 	template.Execute(writer, info)
