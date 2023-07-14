@@ -52,8 +52,9 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	task := getTask(req, rdb)
 	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
-	position, _ := rdb.Get(ctx, task+"/position").Result()
-	help, _ := rdb.Get(ctx, task+"/help").Result()
+	next, _ := rdb.Get(ctx, task+"/next").Result()
+	position, _ := rdb.Get(ctx, next+"/position").Result()
+	help, _ := rdb.Get(ctx, next+"/help").Result()
 	mlok := gotoS{
 		number,
 		template.HTML(position),
