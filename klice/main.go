@@ -32,7 +32,7 @@ func getTask(req *http.Request, rdb *redis.Client) (task string) {
 	}
 	team, _ := req.Cookie("team")
 	tier, _ := rdb.Get(ctx, "team/"+team.Value+"/tier").Result()
-	task, _ = rdb.Get(ctx, qr+"/"+tier).Result()
+	task, _ = rdb.Get(ctx, qr+"/tier/"+tier).Result()
 	return
 }
 
@@ -52,6 +52,10 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	task := getTask(req, rdb)
 	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
+	// incr last
+	team, _ := req.Cookie("team")
+	rdb.Incr(ctx, "team/"+team.Value+"/last")
+	// get next
 	next, _ := rdb.Get(ctx, task+"/next").Result()
 	position, _ := rdb.Get(ctx, next+"/position").Result()
 	help, _ := rdb.Get(ctx, next+"/help").Result()
@@ -86,6 +90,22 @@ func handleSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Clie
 	}
 }
 
+func solved(req *http.Request, rdb *redis.Client) bool {
+	// last solved task
+	team, _ := req.Cookie("team")
+	lastS, _ := rdb.Get(ctx, "team/"+team.Value+"/last").Result()
+	last, _ := strconv.Atoi(lastS)
+	// task number
+	task := getTask(req, rdb)
+	numberS, _ := rdb.Get(ctx, task+"/number").Result()
+	number, _ := strconv.Atoi(numberS)
+	if last >= number {
+		return true
+	} else {
+		return false
+	}
+}
+
 func main() {
 	tmplQ := template.Must(template.ParseFiles("cipher.html"))
 	tmplM := template.Must(template.ParseFiles("done.html"))
@@ -114,7 +134,7 @@ func main() {
 			solOk, _ := rdb.Get(ctx, task+"/solution").Result()
 			sol := req.FormValue("solution")
 			sol = strings.ToUpper(sol)
-			if sol == solOk {
+			if sol == solOk || solved(req, rdb) {
 				handleMlok(writer, req, tmplM, rdb)
 			} else {
 				handleCipher(writer, req, tmplQ, rdb)
