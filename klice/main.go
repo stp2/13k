@@ -26,21 +26,21 @@ type gotoS struct {
 var ctx context.Context = context.Background()
 
 func getTask(req *http.Request, rdb *redis.Client) (task string) {
-	task = req.URL.Path
-	if task[0] == '/' {
-		task = task[1:]
+	qr := req.URL.Path
+	if qr[0] == '/' {
+		qr = qr[1:]
 	}
 	team, _ := req.Cookie("team")
-	tier, _ := rdb.Get(ctx, team.Value+":tier").Result()
-	task, _ = rdb.Get(ctx, task+":"+tier).Result()
+	tier, _ := rdb.Get(ctx, "team/"+team.Value+"/tier").Result()
+	task, _ = rdb.Get(ctx, qr+"/"+tier).Result()
 	return
 }
 
 func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
 	task := getTask(req, rdb)
-	numberS, _ := rdb.Get(ctx, task+":number").Result()
+	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
-	cipher, _ := rdb.Get(ctx, task+":cipher").Result()
+	cipher, _ := rdb.Get(ctx, task+"/cipher").Result()
 	q := questionS{
 		number,
 		template.HTML(cipher),
@@ -50,10 +50,10 @@ func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.
 
 func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
 	task := getTask(req, rdb)
-	numberS, _ := rdb.Get(ctx, task+":number").Result()
+	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
-	position, _ := rdb.Get(ctx, task+":position").Result()
-	help, _ := rdb.Get(ctx, task+":help").Result()
+	position, _ := rdb.Get(ctx, task+"/position").Result()
+	help, _ := rdb.Get(ctx, task+"/help").Result()
 	mlok := gotoS{
 		number,
 		template.HTML(position),
@@ -64,7 +64,7 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 func handleSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) {
 	req.ParseForm()
 	pass := req.FormValue("passphrase")
-	_, err := rdb.Get(ctx, pass+":name").Result()
+	_, err := rdb.Get(ctx, "team/"+pass+"/name").Result()
 	if err == redis.Nil {
 		body, _ := ioutil.ReadFile("signIn.html")
 		fmt.Fprint(writer, string(body))
@@ -75,13 +75,13 @@ func handleSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Clie
 			Path:   "/",
 			MaxAge: 36000,
 		}
-		task, err := req.Cookie("task")
+		qr, err := req.Cookie("qr")
 		if err == nil {
-			task.MaxAge = -1
-			http.SetCookie(writer, task)
+			qr.MaxAge = -1
+			http.SetCookie(writer, qr)
 		}
 		http.SetCookie(writer, &cookie)
-		http.Redirect(writer, req, task.Value, 302)
+		http.Redirect(writer, req, qr.Value, 302)
 	}
 }
 
@@ -96,21 +96,21 @@ func main() {
 		DB:       0,  // use default DB
 	})
 
-	http.HandleFunc("/", func(writer http.ResponseWriter, req *http.Request) {
+	http.HandleFunc("/qr/", func(writer http.ResponseWriter, req *http.Request) {
 		_, err := req.Cookie("team")
-		if err != nil {
-			cookie := http.Cookie{
-				Name:   "task",
+		if err != nil { // need login
+			cookie := http.Cookie{ // qr url
+				Name:   "qr",
 				Value:  req.URL.Path,
 				Path:   "/",
 				MaxAge: 3600,
 			}
 			http.SetCookie(writer, &cookie)
 			http.Redirect(writer, req, "/signin", 302)
-		} else {
+		} else { // display task
 			req.ParseForm()
 			task := getTask(req, rdb)
-			solOk, _ := rdb.Get(ctx, task+":solution").Result()
+			solOk, _ := rdb.Get(ctx, task+"/solution").Result()
 			sol := req.FormValue("solution")
 			sol = strings.ToUpper(sol)
 			if sol == solOk {
