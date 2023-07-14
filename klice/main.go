@@ -23,6 +23,11 @@ type gotoS struct {
 	Help   template.HTML
 }
 
+type teamS struct {
+	Name string
+	Last int
+}
+
 var ctx context.Context = context.Background()
 
 func getTask(req *http.Request, rdb *redis.Client) (task string) {
@@ -54,7 +59,7 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	number, _ := strconv.Atoi(numberS)
 	// incr last
 	team, _ := req.Cookie("team")
-	rdb.Incr(ctx, "team/"+team.Value+"/last")
+	rdb.Set(ctx, "team/"+team.Value+"/last", number, 0)
 	// get next
 	next, _ := rdb.Get(ctx, task+"/next").Result()
 	position, _ := rdb.Get(ctx, next+"/position").Result()
@@ -123,9 +128,22 @@ func isSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) 
 	}
 }
 
+func handleTeam(writer http.ResponseWriter, req *http.Request, template template.Template, rdb *redis.Client) {
+	team, _ := req.Cookie("team")
+	name, _ := rdb.Get(ctx, "team/"+team.Value+"/name").Result()
+	lastS, _ := rdb.Get(ctx, "team/"+team.Value+"/last").Result()
+	last, _ := strconv.Atoi(lastS)
+	info := teamS{
+		name,
+		last,
+	}
+	template.Execute(writer, info)
+}
+
 func main() {
 	tmplQ := template.Must(template.ParseFiles("cipher.html"))
 	tmplM := template.Must(template.ParseFiles("done.html"))
+	tmplT := template.Must(template.ParseFiles("team.html"))
 
 	// Redis
 	rdb := redis.NewClient(&redis.Options{
@@ -150,6 +168,11 @@ func main() {
 	})
 	http.HandleFunc("/signin", func(writer http.ResponseWriter, req *http.Request) {
 		handleSignIn(writer, req, rdb)
+	})
+	http.HandleFunc("/team", func(writer http.ResponseWriter, req *http.Request) {
+		if isSignIn(writer, req, rdb) {
+			handleTeam(writer, req, *tmplT, rdb)
+		}
 	})
 	http.ListenAndServe("127.0.0.6:8080", nil)
 }

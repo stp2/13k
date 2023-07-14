@@ -1,0 +1,11 @@
+<html>
+	<head>
+		<title>Tým {{.Name}}</title>
+	</head>
+	<body>
+        <h1>Tým {{.Name}}</h1>
+		Poslední vyluštená šifra: {{.Last}}
+		<hr>
+		<input type="button" value ="Odhlásit" onclick= 'document.cookie = "team=; expires=Thu, 01 Jan 1970 00:00:00 GMT";location.reload();'/>
+	</body>
+</html>
