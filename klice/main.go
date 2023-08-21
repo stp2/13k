@@ -30,8 +30,9 @@ type teamS struct {
 }
 
 var ctx context.Context = context.Background()
+var rdb *redis.Client
 
-func getTask(req *http.Request, rdb *redis.Client) (task string) {
+func getTask(req *http.Request) (task string) {
 	qr := req.URL.Path
 	if qr[0] == '/' {
 		qr = qr[1:]
@@ -42,8 +43,8 @@ func getTask(req *http.Request, rdb *redis.Client) (task string) {
 	return
 }
 
-func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
-	task := getTask(req, rdb)
+func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.Template) {
+	task := getTask(req)
 	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
 	cipher, _ := rdb.Get(ctx, task+"/cipher").Result()
@@ -54,8 +55,8 @@ func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.
 	tmpl.Execute(writer, q)
 }
 
-func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Template, rdb *redis.Client) {
-	task := getTask(req, rdb)
+func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Template) {
+	task := getTask(req)
 	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
 	// incr last
@@ -72,7 +73,7 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	tmpl.Execute(writer, mlok)
 }
 
-func handleSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) {
+func handleSignIn(writer http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	pass := req.FormValue("passphrase")
 	_, err := rdb.Get(ctx, "team/"+pass+"/name").Result()
@@ -92,17 +93,17 @@ func handleSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Clie
 			http.SetCookie(writer, qr)
 		}
 		http.SetCookie(writer, &cookie)
-		http.Redirect(writer, req, qr.Value, 302)
+		http.Redirect(writer, req, qr.Value, http.StatusFound)
 	}
 }
 
-func solved(req *http.Request, rdb *redis.Client) bool {
+func solved(req *http.Request) bool {
 	// last solved task
 	team, _ := req.Cookie("team")
 	lastS, _ := rdb.Get(ctx, "team/"+team.Value+"/last").Result()
 	last, _ := strconv.Atoi(lastS)
 	// task number
-	task := getTask(req, rdb)
+	task := getTask(req)
 	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
 	if last >= number {
@@ -112,7 +113,7 @@ func solved(req *http.Request, rdb *redis.Client) bool {
 	}
 }
 
-func isSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) bool {
+func isSignIn(writer http.ResponseWriter, req *http.Request) bool {
 	_, err := req.Cookie("team")
 	if err != nil { // need login
 		cookie := http.Cookie{ // qr url
@@ -122,14 +123,14 @@ func isSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Client) 
 			MaxAge: 3600,
 		}
 		http.SetCookie(writer, &cookie)
-		http.Redirect(writer, req, "/signin", 302)
+		http.Redirect(writer, req, "/signin", http.StatusFound)
 		return false
 	} else {
 		return true
 	}
 }
 
-func handleTeam(writer http.ResponseWriter, req *http.Request, template template.Template, rdb *redis.Client) {
+func handleTeam(writer http.ResponseWriter, req *http.Request, template template.Template) {
 	team, _ := req.Cookie("team")
 	name, _ := rdb.Get(ctx, "team/"+team.Value+"/name").Result()
 	tier, _ := rdb.Get(ctx, "team/"+team.Value+"/tier").Result()
@@ -149,32 +150,32 @@ func main() {
 	tmplT := template.Must(template.ParseFiles("team.html"))
 
 	// Redis
-	rdb := redis.NewClient(&redis.Options{
+	rdb = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
 
 	http.HandleFunc("/qr/", func(writer http.ResponseWriter, req *http.Request) {
-		if isSignIn(writer, req, rdb) {
+		if isSignIn(writer, req) {
 			req.ParseForm()
-			task := getTask(req, rdb)
+			task := getTask(req)
 			solOk, _ := rdb.Get(ctx, task+"/solution").Result()
 			sol := req.FormValue("solution")
 			sol = strings.ToUpper(sol)
-			if sol == solOk || solved(req, rdb) {
-				handleMlok(writer, req, tmplM, rdb)
+			if sol == solOk || solved(req) {
+				handleMlok(writer, req, tmplM)
 			} else {
-				handleCipher(writer, req, tmplQ, rdb)
+				handleCipher(writer, req, tmplQ)
 			}
 		}
 	})
 	http.HandleFunc("/signin", func(writer http.ResponseWriter, req *http.Request) {
-		handleSignIn(writer, req, rdb)
+		handleSignIn(writer, req)
 	})
 	http.HandleFunc("/team", func(writer http.ResponseWriter, req *http.Request) {
-		if isSignIn(writer, req, rdb) {
-			handleTeam(writer, req, *tmplT, rdb)
+		if isSignIn(writer, req) {
+			handleTeam(writer, req, *tmplT)
 		}
 	})
 	http.ListenAndServe("127.0.0.6:8080", nil)
