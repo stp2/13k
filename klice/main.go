@@ -178,5 +178,6 @@ func main() {
 			handleTeam(writer, req, *tmplT)
 		}
 	})
+	http.HandleFunc("/admin", handleAdmin)
 	http.ListenAndServe("127.0.0.6:8080", nil)
 }
