@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -77,7 +77,7 @@ func handleSignIn(writer http.ResponseWriter, req *http.Request, rdb *redis.Clie
 	pass := req.FormValue("passphrase")
 	_, err := rdb.Get(ctx, "team/"+pass+"/name").Result()
 	if err == redis.Nil {
-		body, _ := ioutil.ReadFile("signIn.html")
+		body, _ := os.ReadFile("signIn.html")
 		fmt.Fprint(writer, string(body))
 	} else {
 		cookie := http.Cookie{
