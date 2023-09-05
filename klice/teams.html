@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Týmy</title>
+</head>
+
+<body>
+    <h1>Tabulka týmů</h1>
+    <table border="1">
+        <tr>
+            <th>Jméno</th>
+            <th>Heslo</th>
+            <th>Obtížnost</th>
+            <th>Poslední</th>
+        </tr>
+        {{range .}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td>{{.Pass}}</td>
+            <td>{{.Tier}}</td>
+            <td>{{.Last}}</td>
+        </tr>
+        {{end}}
+    </table>
+</body>
+
+</html>

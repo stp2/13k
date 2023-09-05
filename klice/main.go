@@ -150,6 +150,8 @@ func main() {
 	tmplQ := template.Must(template.ParseFiles("cipher.html"))
 	tmplM := template.Must(template.ParseFiles("done.html"))
 	tmplT := template.Must(template.ParseFiles("team.html"))
+	// admin template
+	AtmplT = template.Must(template.ParseFiles("teams.html"))
 
 	// Redis
 	rdb = redis.NewClient(&redis.Options{
