@@ -114,21 +114,22 @@ func handleSignIn(writer http.ResponseWriter, req *http.Request) {
 }
 
 func isSignIn(writer http.ResponseWriter, req *http.Request) bool {
-	team, _ := req.Cookie("team")
-	_, err := rdb.Get(ctx, "team/"+team.Value+"/name").Result()
-	if err != nil { // need login
-		cookie := http.Cookie{ // url
-			Name:   "url",
-			Value:  req.URL.Path,
-			Path:   "/",
-			MaxAge: 3600,
+	team, ok := req.Cookie("team")
+	if ok == nil {
+		_, err := rdb.Get(ctx, "team/"+team.Value+"/name").Result()
+		if err == nil {
+			return true
 		}
-		http.SetCookie(writer, &cookie)
-		http.Redirect(writer, req, "/signin", http.StatusFound)
-		return false
-	} else {
-		return true
 	}
+	cookie := http.Cookie{ // url
+		Name:   "url",
+		Value:  req.URL.Path,
+		Path:   "/",
+		MaxAge: 3600,
+	}
+	http.SetCookie(writer, &cookie)
+	http.Redirect(writer, req, "/signin", http.StatusFound)
+	return false
 }
 
 func handleTeam(writer http.ResponseWriter, req *http.Request, template template.Template) {
