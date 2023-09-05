@@ -7,7 +7,10 @@ import (
 )
 
 func teams(writer http.ResponseWriter, req *http.Request) {
-
+	iter := rdb.Scan(ctx, 0, "team/*/name", 0).Iterator()
+	for iter.Next(ctx) {
+		fmt.Fprintln(writer, iter.Val())
+	}
 }
 
 func handleAdmin(writer http.ResponseWriter, req *http.Request) {
@@ -28,7 +31,7 @@ func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 			fmt.Println(path)
 			switch path {
 			case "teams":
-				fmt.Fprintf(writer, "teams")
+				teams(writer, req)
 			default:
 				body, _ := os.ReadFile("admin.html")
 				fmt.Fprint(writer, string(body))
