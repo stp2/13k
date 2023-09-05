@@ -24,9 +24,17 @@ func getTeamName(path string) string {
 	return path
 }
 
+func increaseLast(req *http.Request) {
+	req.ParseForm()
+	rdb.Incr(ctx, "team/"+req.PostFormValue("team")+"/last")
+}
+
 func teams(writer http.ResponseWriter, req *http.Request) {
 	var teams []AteamsT = make([]AteamsT, 0)
 	var teamPass []string = make([]string, 0)
+
+	// handle increase form
+	increaseLast(req)
 
 	iter := rdb.Scan(ctx, 0, "team/*/name", 0).Iterator()
 	for iter.Next(ctx) {

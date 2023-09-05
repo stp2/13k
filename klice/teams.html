@@ -13,6 +13,7 @@
             <th>Heslo</th>
             <th>Obtížnost</th>
             <th>Poslední</th>
+            <th>Posuň</th>
         </tr>
         {{range .}}
         <tr>
@@ -20,6 +21,9 @@
             <td>{{.Pass}}</td>
             <td>{{.Tier}}</td>
             <td>{{.Last}}</td>
+            <td>
+                <form method="post"><button type="submit" name="team" value="{{.Pass}}">Zvedni</button></form>
+            </td>
         </tr>
         {{end}}
     </table>
