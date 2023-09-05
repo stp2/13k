@@ -51,7 +51,7 @@ func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 			if path[0] == '/' {
 				path = path[1:]
 			}
-			path = path[5:]
+			path, _ = strings.CutPrefix(path, "admin")
 			if path != "" && path[0] == '/' {
 				path = path[1:]
 			}
