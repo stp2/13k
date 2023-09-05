@@ -73,30 +73,6 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	tmpl.Execute(writer, mlok)
 }
 
-func handleSignIn(writer http.ResponseWriter, req *http.Request) {
-	req.ParseForm()
-	pass := req.FormValue("passphrase")
-	_, err := rdb.Get(ctx, "team/"+pass+"/name").Result()
-	if err == redis.Nil {
-		body, _ := os.ReadFile("signIn.html")
-		fmt.Fprint(writer, string(body))
-	} else {
-		cookie := http.Cookie{
-			Name:   "team",
-			Value:  pass,
-			Path:   "/",
-			MaxAge: 36000,
-		}
-		qr, err := req.Cookie("qr")
-		if err == nil {
-			qr.MaxAge = -1
-			http.SetCookie(writer, qr)
-		}
-		http.SetCookie(writer, &cookie)
-		http.Redirect(writer, req, qr.Value, http.StatusFound)
-	}
-}
-
 func solved(req *http.Request) bool {
 	// last solved task
 	team, _ := req.Cookie("team")
@@ -113,11 +89,36 @@ func solved(req *http.Request) bool {
 	}
 }
 
+func handleSignIn(writer http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
+	pass := req.FormValue("passphrase")
+	_, err := rdb.Get(ctx, "team/"+pass+"/name").Result()
+	if err == redis.Nil {
+		body, _ := os.ReadFile("signIn.html")
+		fmt.Fprint(writer, string(body))
+	} else {
+		cookie := http.Cookie{
+			Name:   "team",
+			Value:  pass,
+			Path:   "/",
+			MaxAge: 36000,
+		}
+		qr, err := req.Cookie("url")
+		if err == nil {
+			qr.MaxAge = -1
+			http.SetCookie(writer, qr)
+		}
+		http.SetCookie(writer, &cookie)
+		http.Redirect(writer, req, qr.Value, http.StatusFound)
+	}
+}
+
 func isSignIn(writer http.ResponseWriter, req *http.Request) bool {
-	_, err := req.Cookie("team")
+	team, _ := req.Cookie("team")
+	_, err := rdb.Get(ctx, "team/"+team.Value+"/name").Result()
 	if err != nil { // need login
-		cookie := http.Cookie{ // qr url
-			Name:   "qr",
+		cookie := http.Cookie{ // url
+			Name:   "url",
 			Value:  req.URL.Path,
 			Path:   "/",
 			MaxAge: 3600,
