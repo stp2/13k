@@ -56,6 +56,17 @@ func teams(writer http.ResponseWriter, req *http.Request) {
 	AtmplT.Execute(writer, teams)
 }
 
+func getTierPath(tier string) (path []string) {
+	qr, _ := rdb.Get(ctx, "start/"+tier).Result()
+	for qr[:3] != "end" {
+		path = append(path, qr)
+		task, _ := rdb.Get(ctx, qr+"/tier/"+tier).Result()
+		qr, _ = rdb.Get(ctx, task+"/next").Result()
+	}
+	path = append(path, qr)
+	return
+}
+
 func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 	user, pass, ok := req.BasicAuth()
 	if ok {
@@ -81,5 +92,4 @@ func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 	}
 	writer.Header().Add("WWW-Authenticate", `Basic realm="Přihlaš se!"`)
 	writer.WriteHeader(http.StatusUnauthorized)
-	return
 }
