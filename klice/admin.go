@@ -14,7 +14,7 @@ type AteamsT struct {
 	Pass string
 	Tier string
 	Last int
-	Next string
+	Next template.HTML
 }
 
 type ATaskT struct {
@@ -66,7 +66,10 @@ func teams(writer http.ResponseWriter, req *http.Request) {
 		tier, _ := rdb.Get(ctx, "team/"+t+"/tier").Result()
 		lastS, _ := rdb.Get(ctx, "team/"+t+"/last").Result()
 		last, _ := strconv.Atoi(lastS)
-		teams = append(teams, AteamsT{name, t, tier, last, ""})
+		path := getTierPath(tier)
+		next := path[last]
+		next = "https://klice.h21.fun/" + next
+		teams = append(teams, AteamsT{name, t, tier, last, template.HTML(next)})
 	}
 	AtmplT.Execute(writer, teams)
 }

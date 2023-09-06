@@ -22,6 +22,7 @@
             <td>{{.Tier}}</td>
             <td>{{.Last}}</td>
             <td>{{.Next}}</td>
+            <td><button onclick="navigator.clipboard.writeText('{{.Next}}')">Zkopíruj do schránky</button></td>
         </tr>
         {{end}}
     </table>
