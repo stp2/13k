@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Šifry {{.Tier}}</title>
+</head>
+
+<body>
+    <h1>Tabulka šifer {{.Tier}}</h1>
+    <table border="1">
+        <tr>
+            <th>Číslo</th>
+            <th>Zadání</th>
+            <th>Řešení</th>
+            <th>Poloha</th>
+            <th>Nápověda</th>
+            <th>Odkaz</th>
+        </tr>
+        {{range .Path}}
+        <tr>
+            <td>{{.Number}}</td>
+            <td>{{.Cipher}}</td>
+            <td>{{.Solution}}</td>
+            <td>{{.Position}}</td>
+            <td>{{.Help}}</td>
+            <td>{{.Link}}</td>
+            <td><button onclick="navigator.clipboard.writeText('{{.Link}}')">Zkopíruj do schránky</button></td>
+        </tr>
+        {{end}}
+    </table>
+</body>
+
+</html>

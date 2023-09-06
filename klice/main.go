@@ -19,8 +19,8 @@ type questionS struct {
 
 type gotoS struct {
 	Number int
-	Goto   template.HTML
-	Help   template.HTML
+	Goto   string
+	Help   string
 }
 
 type teamS struct {
@@ -68,8 +68,8 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	help, _ := rdb.Get(ctx, next+"/help").Result()
 	mlok := gotoS{
 		number,
-		template.HTML(position),
-		template.HTML(help)}
+		position,
+		help}
 	tmpl.Execute(writer, mlok)
 }
 
@@ -152,6 +152,7 @@ func main() {
 	tmplT := template.Must(template.ParseFiles("team.html"))
 	// admin template
 	AtmplT = template.Must(template.ParseFiles("teams.html"))
+	AtmplP = template.Must(template.ParseFiles("tasks.html"))
 
 	// Redis
 	rdb = redis.NewClient(&redis.Options{

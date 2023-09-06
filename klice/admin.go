@@ -17,7 +17,22 @@ type AteamsT struct {
 	Next string
 }
 
+type ATaskT struct {
+	Number   string
+	Cipher   template.HTML
+	Solution string
+	Position string
+	Help     string
+	Link     template.HTML
+}
+
+type APathT struct {
+	Tier string
+	Path []ATaskT
+}
+
 var AtmplT *template.Template
+var AtmplP *template.Template
 
 func getTeamName(path string) string {
 	path, _ = strings.CutPrefix(path, "team/")
@@ -67,6 +82,27 @@ func getTierPath(tier string) (path []string) {
 	return
 }
 
+func handlePath(writer http.ResponseWriter, tier string) {
+	var pathS APathT
+	pathS.Tier = tier
+	path := getTierPath(tier)
+	for _, qr := range path {
+		task, _ := rdb.Get(ctx, qr+"/tier/"+tier).Result()
+		number, _ := rdb.Get(ctx, task+"/number").Result()
+		cipher, _ := rdb.Get(ctx, task+"/cipher").Result()
+		solution, _ := rdb.Get(ctx, task+"/solution").Result()
+		position, _ := rdb.Get(ctx, qr+"/position").Result()
+		help, _ := rdb.Get(ctx, qr+"/help").Result()
+		link := template.HTML("https://klice.h21.fun/" + qr)
+		if qr[:3] == "end" {
+			number = ""
+			link = ""
+		}
+		pathS.Path = append(pathS.Path, ATaskT{number, template.HTML(cipher), solution, position, help, link})
+	}
+	AtmplP.Execute(writer, pathS)
+}
+
 func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 	user, pass, ok := req.BasicAuth()
 	if ok {
@@ -80,9 +116,12 @@ func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 			if path != "" && path[0] == '/' {
 				path = path[1:]
 			}
-			switch path {
-			case "teams":
+			switch {
+			case path == "teams":
 				teams(writer, req)
+			case strings.Split(path, "/")[0] == "tasks":
+				tier, _ := strings.CutPrefix(path, "tasks/")
+				handlePath(writer, tier)
 			default:
 				body, _ := os.ReadFile("admin.html")
 				fmt.Fprint(writer, string(body))
