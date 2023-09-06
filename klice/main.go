@@ -183,5 +183,6 @@ func main() {
 		}
 	})
 	http.HandleFunc("/admin/", handleAdmin)
+	http.HandleFunc("/admin/reset", resetLast)
 	http.ListenAndServe("127.0.0.6:8080", nil)
 }

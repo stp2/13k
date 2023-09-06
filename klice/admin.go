@@ -14,6 +14,7 @@ type AteamsT struct {
 	Pass string
 	Tier string
 	Last int
+	Next string
 }
 
 var AtmplT *template.Template
@@ -24,28 +25,33 @@ func getTeamName(path string) string {
 	return path
 }
 
-func increaseLast(req *http.Request) {
-	req.ParseForm()
-	rdb.Incr(ctx, "team/"+req.PostFormValue("team")+"/last")
+func getTeams() (teams []string) {
+	iter := rdb.Scan(ctx, 0, "team/*/name", 0).Iterator()
+	for iter.Next(ctx) {
+		teams = append(teams, getTeamName(iter.Val()))
+	}
+	return
+}
+
+func resetLast(writer http.ResponseWriter, req *http.Request) {
+	teams := getTeams()
+	for _, t := range teams {
+		rdb.Set(ctx, "team/"+t+"/last", 0, -1)
+	}
+	http.Redirect(writer, req, "/admin/teams", http.StatusFound)
 }
 
 func teams(writer http.ResponseWriter, req *http.Request) {
 	var teams []AteamsT = make([]AteamsT, 0)
-	var teamPass []string = make([]string, 0)
 
-	// handle increase form
-	increaseLast(req)
-
-	iter := rdb.Scan(ctx, 0, "team/*/name", 0).Iterator()
-	for iter.Next(ctx) {
-		teamPass = append(teamPass, getTeamName(iter.Val()))
-	}
+	teamPass := getTeams()
+	// get data
 	for _, t := range teamPass {
 		name, _ := rdb.Get(ctx, "team/"+t+"/name").Result()
 		tier, _ := rdb.Get(ctx, "team/"+t+"/tier").Result()
 		lastS, _ := rdb.Get(ctx, "team/"+t+"/last").Result()
 		last, _ := strconv.Atoi(lastS)
-		teams = append(teams, AteamsT{name, t, tier, last})
+		teams = append(teams, AteamsT{name, t, tier, last, ""})
 	}
 	AtmplT.Execute(writer, teams)
 }
