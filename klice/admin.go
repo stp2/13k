@@ -125,6 +125,8 @@ func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 			case strings.Split(path, "/")[0] == "tasks":
 				tier, _ := strings.CutPrefix(path, "tasks/")
 				handlePath(writer, tier)
+			case path[:5] == "reset":
+				resetLast(writer, req)
 			default:
 				body, _ := os.ReadFile("admin.html")
 				fmt.Fprint(writer, string(body))
