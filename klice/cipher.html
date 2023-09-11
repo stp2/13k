@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<title>Sifra {{.Number}}</title>
-	</head>
-	<body>
-        <h1>Zadání {{.Number}}</h1>
-		{{.Question}}
-		<hr>
-		<form method="post" accept-charset="utf-8">
-			Řešení:<input type="text" name="solution">
-			<input type="submit" value="Mám">
-		</form>
-	</body>
+
+<head>
+    <title>Sifra {{.Number}}</title>
+</head>
+
+<body>
+    <h1>Zadání {{.Number}}</h1>
+    {{.Question}}
+    <hr>
+    <form method="post" accept-charset="utf-8">
+        Řešení:<input type="text" name="solution">
+        <input type="submit" value="Mám">
+    </form>
+    <hr>
+    Indicie: {{.Clue}}
+</body>
+
 </html>

@@ -15,6 +15,7 @@ import (
 type questionS struct {
 	Number   int
 	Question template.HTML
+	Clue     string
 }
 
 type gotoS struct {
@@ -32,11 +33,16 @@ type teamS struct {
 var ctx context.Context = context.Background()
 var rdb *redis.Client
 
-func getTask(req *http.Request) (task string) {
+func getQr(req *http.Request) string {
 	qr := req.URL.Path
 	if qr[0] == '/' {
 		qr = qr[1:]
 	}
+	return qr
+}
+
+func getTask(req *http.Request) (task string) {
+	qr := getQr(req)
 	team, _ := req.Cookie("team")
 	tier, _ := rdb.Get(ctx, "team/"+team.Value+"/tier").Result()
 	task, _ = rdb.Get(ctx, qr+"/tier/"+tier).Result()
@@ -44,13 +50,16 @@ func getTask(req *http.Request) (task string) {
 }
 
 func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.Template) {
+	qr := getQr(req)
 	task := getTask(req)
 	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
 	cipher, _ := rdb.Get(ctx, task+"/cipher").Result()
+	clue, _ := rdb.Get(ctx, qr+"/clue").Result()
 	q := questionS{
 		number,
 		template.HTML(cipher),
+		clue,
 	}
 	tmpl.Execute(writer, q)
 }
