@@ -48,6 +48,14 @@ func getTeams() (teams []string) {
 	return
 }
 
+func increaseLast(req *http.Request) {
+	req.ParseForm()
+	_, ok := rdb.Get(ctx, "team/"+req.PostFormValue("team")+"/last").Result()
+	if ok == nil {
+		rdb.Incr(ctx, "team/"+req.PostFormValue("team")+"/last")
+	}
+}
+
 func resetLast(writer http.ResponseWriter, req *http.Request) {
 	teams := getTeams()
 	for _, t := range teams {
@@ -58,6 +66,9 @@ func resetLast(writer http.ResponseWriter, req *http.Request) {
 
 func teams(writer http.ResponseWriter, req *http.Request) {
 	var teams []AteamsT = make([]AteamsT, 0)
+
+	// Reveal next
+	increaseLast(req)
 
 	teamPass := getTeams()
 	// get data
@@ -125,7 +136,7 @@ func handleAdmin(writer http.ResponseWriter, req *http.Request) {
 			case strings.Split(path, "/")[0] == "tasks":
 				tier, _ := strings.CutPrefix(path, "tasks/")
 				handlePath(writer, tier)
-			case path[:5] == "reset":
+			case strings.HasPrefix(path, "reset"):
 				resetLast(writer, req)
 			default:
 				body, _ := os.ReadFile("admin.html")
