@@ -8,6 +8,7 @@
 |/admin|admninistrace|
 |/admin/teams|seznam týmů|
 |/admin/reset|reset počítadla poslední šifry|
+|/admin/tasks/'tier'|seznam šifer určené obtížnosti|
 
 # Redis
 |Klíč|Popis|
@@ -20,6 +21,7 @@
 |qr/'qr id'/position|poloha|
 |qr/'qr id'/help|nápověda k poloze|
 |qr/'qr id'/tier/'tier'|jakou šifru pro jakou obtížnost|
+|qr/'qr id'/clue|nápověda do celkové soutěže|
 |task/'task id'/number|číslo v pořadí|
 |task/'task id'/cipher|šifra|
 |task/'task id'/solution|řešení|
