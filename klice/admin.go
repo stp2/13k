@@ -10,11 +10,12 @@ import (
 )
 
 type AteamsT struct {
-	Name string
-	Pass string
-	Tier string
-	Last int
-	Next template.HTML
+	Name  string
+	Pass  string
+	Tier  string
+	Last  int
+	Helps int
+	Next  template.HTML
 }
 
 type ATaskT struct {
@@ -60,6 +61,7 @@ func resetLast(writer http.ResponseWriter, req *http.Request) {
 	teams := getTeams()
 	for _, t := range teams {
 		rdb.Set(ctx, "team/"+t+"/last", 0, -1)
+		rdb.Set(ctx, "team/"+t+"/helps", 0, -1)
 	}
 	http.Redirect(writer, req, "/admin/teams", http.StatusFound)
 }
@@ -77,10 +79,12 @@ func teams(writer http.ResponseWriter, req *http.Request) {
 		tier, _ := rdb.Get(ctx, "team/"+t+"/tier").Result()
 		lastS, _ := rdb.Get(ctx, "team/"+t+"/last").Result()
 		last, _ := strconv.Atoi(lastS)
+		helpsS, _ := rdb.Get(ctx, "team/"+t+"/helps").Result()
+		helps, _ := strconv.Atoi(helpsS)
 		path := getTierPath(tier)
 		next := path[last]
 		next = "https://klice.h21.fun/" + next
-		teams = append(teams, AteamsT{name, t, tier, last, template.HTML(next)})
+		teams = append(teams, AteamsT{name, t, tier, last, helps, template.HTML(next)})
 	}
 	AtmplT.Execute(writer, teams)
 }

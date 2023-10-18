@@ -14,6 +14,13 @@
         <input type="submit" value="Mám">
     </form>
     <hr>
+    Nechat se podat:
+    <td>
+        <form action="/giveUp" method="post">
+            <button type="submit" name="CNumber" value="{{.Number}}">Nevím</button>
+        </form>
+    </td>
+    <hr>
     Indicie: {{.Clue}}
 </body>
 

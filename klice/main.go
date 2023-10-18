@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -22,6 +23,7 @@ type gotoS struct {
 	Number int
 	Goto   string
 	Help   string
+	Clue   string
 }
 
 type teamS struct {
@@ -32,6 +34,8 @@ type teamS struct {
 
 var ctx context.Context = context.Background()
 var rdb *redis.Client
+
+var tmplG *template.Template
 
 func getQr(req *http.Request) string {
 	qr := req.URL.Path
@@ -65,6 +69,7 @@ func handleCipher(writer http.ResponseWriter, req *http.Request, tmpl *template.
 }
 
 func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Template) {
+	qr := getQr(req)
 	task := getTask(req)
 	numberS, _ := rdb.Get(ctx, task+"/number").Result()
 	number, _ := strconv.Atoi(numberS)
@@ -75,10 +80,12 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	next, _ := rdb.Get(ctx, task+"/next").Result()
 	position, _ := rdb.Get(ctx, next+"/position").Result()
 	help, _ := rdb.Get(ctx, next+"/help").Result()
+	clue, _ := rdb.Get(ctx, qr+"/clue").Result()
 	mlok := gotoS{
 		number,
 		position,
-		help}
+		help,
+		clue}
 	tmpl.Execute(writer, mlok)
 }
 
@@ -155,10 +162,34 @@ func handleTeam(writer http.ResponseWriter, req *http.Request, template template
 	template.Execute(writer, info)
 }
 
+func reveal(team string, number int, wait time.Duration) {
+	time.Sleep(wait)
+	lastS, _ := rdb.Get(ctx, "team/"+team+"/last").Result()
+	last, _ := strconv.Atoi(lastS)
+	if last < number {
+		rdb.Set(ctx, "team/"+team+"/last", number, 0)
+	}
+
+}
+
+func handleGiveUp(writer http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
+	numberS := req.FormValue("CNumber")
+	number, _ := strconv.Atoi(numberS)
+	team, _ := req.Cookie("team")
+	helpsS, _ := rdb.Get(ctx, "team/"+team.Value+"/helps").Result()
+	helps, _ := strconv.Atoi(helpsS)
+	rdb.Incr(ctx, "team/"+team.Value+"/helps")
+	wait := 15 + helps*5
+	go reveal(team.Value, number, time.Duration(wait)*time.Second)
+	tmplG.Execute(writer, wait)
+}
+
 func main() {
 	tmplQ := template.Must(template.ParseFiles("cipher.html"))
 	tmplM := template.Must(template.ParseFiles("done.html"))
 	tmplT := template.Must(template.ParseFiles("team.html"))
+	tmplG = template.Must(template.ParseFiles("giveUp.html"))
 	// admin template
 	AtmplT = template.Must(template.ParseFiles("teams.html"))
 	AtmplP = template.Must(template.ParseFiles("tasks.html"))
@@ -184,14 +215,13 @@ func main() {
 			}
 		}
 	})
-	http.HandleFunc("/signin", func(writer http.ResponseWriter, req *http.Request) {
-		handleSignIn(writer, req)
-	})
+	http.HandleFunc("/signin", handleSignIn)
 	http.HandleFunc("/team", func(writer http.ResponseWriter, req *http.Request) {
 		if isSignIn(writer, req) {
 			handleTeam(writer, req, *tmplT)
 		}
 	})
 	http.HandleFunc("/admin/", handleAdmin)
+	http.HandleFunc("/giveUp", handleGiveUp)
 	http.ListenAndServe("0.0.0.0:8080", nil)
 }
