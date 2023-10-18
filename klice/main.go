@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -162,14 +163,14 @@ func handleTeam(writer http.ResponseWriter, req *http.Request, template template
 	template.Execute(writer, info)
 }
 
-func reveal(team string, number int, wait time.Duration) {
+func reveal(team string, number int, wait time.Duration, uuid string) {
 	time.Sleep(wait)
 	lastS, _ := rdb.Get(ctx, "team/"+team+"/last").Result()
 	last, _ := strconv.Atoi(lastS)
 	if last < number {
 		rdb.Set(ctx, "team/"+team+"/last", number, 0)
 	}
-
+	rdb.Del(ctx, uuid)
 }
 
 func handleGiveUp(writer http.ResponseWriter, req *http.Request) {
@@ -180,9 +181,28 @@ func handleGiveUp(writer http.ResponseWriter, req *http.Request) {
 	helpsS, _ := rdb.Get(ctx, "team/"+team.Value+"/helps").Result()
 	helps, _ := strconv.Atoi(helpsS)
 	rdb.Incr(ctx, "team/"+team.Value+"/helps")
-	wait := 15 + helps*5
-	go reveal(team.Value, number, time.Duration(wait)*time.Second)
-	tmplG.Execute(writer, wait)
+	wait := time.Duration(15+helps*5) * time.Second
+	uuid := uuid.NewString()
+	end := time.Now().Add(wait)
+	rdb.Set(ctx, "giveUp/"+uuid, team.Value+"$"+numberS+"$"+end.Format(time.UnixDate), 0)
+	go reveal(team.Value, number, wait, "giveUp/"+uuid)
+	tmplG.Execute(writer, wait.Minutes())
+}
+
+func startHelps() {
+	iter := rdb.Scan(ctx, 0, "giveUp/*", 0).Iterator()
+	for iter.Next(ctx) {
+		help, _ := rdb.Get(ctx, iter.Val()).Result()
+		helpA := strings.Split(help, "$")
+		t, _ := time.Parse(time.UnixDate, helpA[2])
+		number, _ := strconv.Atoi(helpA[1])
+		if t.After(time.Now()) {
+			wait := time.Until(t)
+			go reveal(helpA[0], number, wait, iter.Val())
+		} else {
+			go reveal(helpA[0], number, 0, iter.Val())
+		}
+	}
 }
 
 func main() {
@@ -200,6 +220,9 @@ func main() {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+
+	// load helps
+	startHelps()
 
 	http.HandleFunc("/qr/", func(writer http.ResponseWriter, req *http.Request) {
 		if isSignIn(writer, req) {

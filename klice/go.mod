@@ -2,7 +2,10 @@ module klice
 
 go 1.20
 
-require github.com/redis/go-redis/v9 v9.0.5
+require (
+	github.com/google/uuid v1.3.1
+	github.com/redis/go-redis/v9 v9.0.5
+)
 
 require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
