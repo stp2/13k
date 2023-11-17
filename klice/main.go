@@ -14,6 +14,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	WAIT   int = 900 // wait seconds
+	PENALE int = 900 // penale for help
+)
+
 type questionS struct {
 	Number   int
 	Question template.HTML
@@ -181,7 +186,7 @@ func handleGiveUp(writer http.ResponseWriter, req *http.Request) {
 	helpsS, _ := rdb.Get(ctx, "team/"+team.Value+"/helps").Result()
 	helps, _ := strconv.Atoi(helpsS)
 	rdb.Incr(ctx, "team/"+team.Value+"/helps")
-	wait := time.Duration(15+helps*5) * time.Second
+	wait := time.Duration(WAIT+helps*PENALE) * time.Second
 	uuid := uuid.NewString()
 	end := time.Now().Add(wait)
 	rdb.Set(ctx, "giveUp/"+uuid, team.Value+"$"+numberS+"$"+end.Format(time.UnixDate), 0)
