@@ -81,7 +81,9 @@ func handleMlok(writer http.ResponseWriter, req *http.Request, tmpl *template.Te
 	number, _ := strconv.Atoi(numberS)
 	// incr last
 	team, _ := req.Cookie("team")
-	rdb.Set(ctx, "team/"+team.Value+"/last", number, 0)
+	if !solved(req) {
+		rdb.Set(ctx, "team/"+team.Value+"/last", number, 0)
+	}
 	// get next
 	next, _ := rdb.Get(ctx, task+"/next").Result()
 	position, _ := rdb.Get(ctx, next+"/position").Result()
